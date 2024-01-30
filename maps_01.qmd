@@ -1,0 +1,136 @@
+---
+title: "Advanced map visualization"
+subtitle: "Challenge 1"
+author: "YOUR NAME"
+format: 
+  html:
+    self-contained: true
+---
+
+# Instructions
+
+Complete all parts of the Exercises section below to earn a Pass for this challenge.
+
+**Submission:** Click the "Render" button in RStudio to knit a self-contained HTML with all images embedded. Commit and push changes to this file as well as the generated HTML. Push your changes to GitHub by midnight on Monday 2/5. (GitHub classroom automatically creates a pull request for receiving feedback.)
+
+
+
+# Exercises
+
+The following exercises will use census tract `tidycensus` data for Ramsey and Hennepin county and crash data (2019-2022) from the [pedestrian/bike crash database](https://information.stpaul.gov/datasets/stpaul::pedestrian-and-bike-crash-dataset-/about) for St. Paul within Ramsey county in the Twin Cities.
+
+The following code loads census data for Ramsey and Hennepin counties and reads in the pedestrian/bike crash data.
+
+**Task:** Add to this code to load in one additional census variable that you think might serve as useful context for crash data. To do this:
+
+- Look at the documentation for `get_acs()` by entering `?tidycensus::get_acs` in the Console.
+- Look at the [Seaching for variables documentation](https://walker-data.com/tidycensus/articles/basic-usage.html#searching-for-variables) from the `tidycensus` package. Use this documentation to addone variable to the `variables` argument in the `get_acs()` function.
+- Rename the variable that you picked to have a more descriptive name within `rename()`.
+
+> Enter the new variable you selected (e.g., B01003_001) here: ____
+> 
+> Enter the new name for that variable (e.g., population) here: ____
+
+```{r reading, message=FALSE, warning=FALSE, results="hide"}
+census2020 <- tidycensus::get_acs(
+    year = 2020,
+    state = "MN",
+    geography = "tract",
+    variables = c("B01003_001", "B19013_001", "B23006_023", "B25058_001", "B25107_001", "B25003_001", "B25003_002", "B25003_003", "B25077_001"),
+    output = "wide",
+    geometry = TRUE
+) %>%
+    filter(word(NAME, 4) %in% c("Ramsey", "Hennepin")) %>%
+    mutate(
+        tract = word(NAME, 3),
+        tract = str_remove(tract, ","),
+        county = word(NAME, 4)
+    ) %>%
+    select(-NAME) %>%
+    rename(
+        "population" = "B01003_001E",
+        "medianIncome" = "B19013_001E",
+        "bachelors" = "B23006_023E",
+        "medContractRent" = "B25058_001E",
+        "tenureTotal" = "B25003_001E",
+        "tenureOwned" = "B25003_002E",
+        "tenureRented" = "B25003_003E",
+        "medianHomeValue"= "B25077_001E"
+    ) %>%
+    select(-contains("_"))
+
+crashes <- read_csv("https://lmyint.github.io/212_spring_2024/data/Crash.csv") %>%
+    filter(!is.na(Latitude), !is.na(Longitude))
+```
+
+**Task:** Visit [this site](https://catalog.data.gov/dataset/tiger-line-shapefile-2019-state-minnesota-primary-and-secondary-roads-state-based-shapefile), and download the Shapefile Zip File to a `data` folder within this folder. Unzip the file (`tl_2019_27_prisecroads.zip`).
+
+Load in the roads shapefile using `st_read()`, and transform `roads` to have the same CRS as `census2020` if necessary.
+
+```{r reading_roads}
+roads <- sf::st_read(???)
+
+# Check CRS of roads and transform if necessary
+
+```
+
+**Task** Use `st_crop()` to crop the roads dataset to the area we are interested in (Hennepin and Ramsey County). To determine the region to crop to, you will need to use `st_bbox()` on a spatial data object that pertains to Hennepin and Ramsey County.
+
+```{r crop_roads}
+roads_sub <- st_crop(???)
+```
+
+**Task:** Transform the `crashes` data frame to a `sf` object that has point geometry using the code below.
+
+```{r crashes_to_sf}
+crashes <- st_as_sf(crashes, coords = c("Longitude", "Latitude"), crs = "NAD83")
+```
+
+**Task:** Check if the CRSs are the same for `census2020` and `crashes` using `st_crs()`. Transform if needed.
+
+```{r check_crs}
+
+```
+
+**Task:** Join the crashes and census dataset together and count the number of crashes per census tract. The function `st_join` can join to spatial data sets according to whether the spatial geometries of the right table intersect with the spatial geometries of the left table. 
+
+```{r join_crashes}
+crashes_per_tract <- st_join(??,??) %>%
+    st_drop_geometry() %>% # removes geometry - makes the following calculation more efficient 
+    filter(!is.na(Accident_Datetime)) %>%
+    count(??) 
+```
+
+**Task:** Join the census data with `crashes_per_tract` and then use a filter of `n > 0` to only keep the census tracts where crashes were recorded instead of all of Ramsey and Hennepin County. 
+
+```{r add_geometry_back}
+crashes_per_tract_geo <- ??? %>% # sf object with census geometry goes first
+    left_join(??, by = ??) %>%
+    filter(n > 0)
+```
+
+**Task:** Create a map that shows the number of pedestrian/bike crashes per census tract.
+
+- Use `scale_fill_gradientn()` to set up a color scale for the census tract colors.
+- Include a layer for the roads.
+
+```{r map_num_crashes}
+
+```
+
+
+**Task:** Create two maps that shows crash locations as points and colors census tracts by two different census variables. (One map per census variable)
+
+- Use `scale_fill_gradientn()` to set up a color scale for the census tract colors.
+- Include a layer for the roads.
+
+```{r maps_crashes_census_info}
+
+```
+
+**Task:** Interpret your findings. Are there any patterns you see with regards to crashes, roads, and the census variables that you explored?
+
+> Write your interpretations here.
+
+
+
